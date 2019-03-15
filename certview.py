@@ -83,6 +83,10 @@ When no option is specified, default is [-SNAdiInu].
 When no certificate_file is specified, stdin is read.
 When stdout is not a tty, colors are disabled.
 
+Prerequisites:
+    Python3
+    Openssl installed in $PATH (program doesn't check).
+
 """
     print(usage.format(script_name = sys.argv[0]))
     return
