@@ -45,21 +45,105 @@ def Usage():
 
     usage = """
 Usage:
-    {script_name} [-h] [-vq]
+    {script_name} [Options] [certificate_file... ]
 
-View certificate important data
+Well arranged view of certificate data
 
-Parametry:
-    -h  ... help - this help
-    -v  ... verbose
-    -q  ... quiet
+Options:
+  -h  ... help - this help
+
+  Print info:
+    -S ... Subject [printed by default]
+    -s ... Subject CN
+    -A ... Issuer (CA)
+    -a ... Issuer CN
+    -d ... Validity dates
+    -n ... Alternative names
+    -i ... Subject key identifier
+    -I ... Issuer key identifier
+    -u ... Key usage
+    -N ... Serial number
+    -H ... Key hash
+
+  Do not print info:
+    +S ... Subject
+
+When no option is specified, default is [-SNAdiInu].
+Wher no certificate_file is specified, stdin is read.
 
 """
     print(usage.format(script_name = sys.argv[0]))
     return
 ## Usage end ## ----------------------------
+
+## Color print helper ## -------------------
 def lprint(header, text):
     print(clr.yellow + header + clr.none, text)
+
+## Certificate parser ## -------------------
+def crtparse(infile):
+    'Certificate data parser'
+    f_incert = False;
+    for line in infile:
+        if f_incert:
+            cert += line
+            if '--END CERTIFICATE--' in line:
+                crt1 = subprocess.run(['openssl', 'x509', '-nameopt', 'oneline', '-serial', '-subject', '-issuer', '-hash',  '-dates'], \
+                       input=bytes(cert, 'ascii'), stdout=subprocess.PIPE)
+                crt1lns = crt1.stdout.decode('ascii').splitlines()
+                crt2 = subprocess.run(['openssl', 'x509', '-text', '-noout', '-certopt', \
+                       'no_header,no_version,no_serial,no_signame,no_validity,no_issuer,no_pubkey,no_sigdump,no_aux,no_subject'], \
+                       input=bytes(cert, 'ascii'), stdout=subprocess.PIPE)
+                crt2lns = iter(crt2.stdout.decode('ascii').splitlines())
+
+                print(clr.green + '----------------------------------------------------' + clr.none)
+                if inf['subject'][0]:
+                    lprint('Subject:', crt1lns[1].split('=', 1)[1].strip())
+                if inf['serial'][0]:
+                    lprint('Serial:', crt1lns[0].split('=', 1)[1])
+                if inf['ca'][0]:
+                    lprint('Issuer:', crt1lns[2].split('=', 1)[1].strip())
+                if inf['hash'][0]:
+                    lprint('Hash:', crt1lns[3])
+                if inf['dates'][0]:
+                    lprint('From:',crt1lns[4].split('=', 1)[1])
+                    lprint('To:  ', crt1lns[5].split('=', 1)[1])
+                if inf['subcn'][0]:
+                    r = re.search(inf['subcn'][1], crt1lns[1].split('=', 1)[1]) 
+                    if r:
+                        lprint('Subject CN:', r.group(1))
+                if inf['cacn'][0]:
+                    r = re.search(inf['cacn'][1], crt1lns[2].split('=', 1)[1]) 
+                    if r:
+                        lprint('Issuer CN:', r.group(1))
+
+                crtusg = [];
+                crtextusg = [];
+                for ln in crt2lns:
+                    if inf['names'][0] and inf['names'][1] in ln:
+                        names = next(crt2lns).strip().split(', ')
+                        print(clr.yellow + 'Names: |' + clr.none)
+                        print('  ' + '\n  '.join(names))
+                    if inf['subid'][0] and inf['subid'][1] in ln:
+                        lprint('Subject ID:', next(crt2lns).lstrip())
+                    if inf['caid'][0] and inf['caid'][1] in ln:
+                        a = next(crt2lns).lstrip()
+                        if a.startswith('keyid:'): a = a[6:]
+                        lprint('Issuer ID:', a)
+                    if inf['usage'][0] and inf['usage'][1] in ln:
+                        crtusg = next(crt2lns).strip().split(", ")
+                    if inf['usage'][0] and inf['usage'][2] in ln:
+                        crtextusg = next(crt2lns).strip().split(", ")
+                if inf['usage'][0]:
+                    print(clr.yellow + 'Usage: |' + clr.none)
+                    print('  ' + '\n  '.join(crtusg + crtextusg))
+                f_incert = False
+        else:
+            if '--BEGIN CERTIFICATE--' in line:
+                cert = line
+                f_incert = True
+    print(clr.green + '----------------------------------------------------' + clr.none)
+    return
 
 ## Main ## =================================
 ########## =================================
@@ -68,8 +152,6 @@ def main():
 
 ## Variables ## ============================
 ############### ============================
-    verbose = 1
-    noarg = True
 
 ## Getparam ## -----------------------------
     argn = []
@@ -85,12 +167,6 @@ def main():
                     if j == 'h':
                         Usage()
                         return
-                    elif j == 't':
-                        test = True
-                    elif j == 'v':
-                        verbose += 1
-                    elif j == 'q':
-                        verbose -= 1
                     elif j == 'S':
                         inf['subject'][0] = True
                     elif j == 's':
@@ -121,74 +197,18 @@ def main():
                 argn.append(args[i])
             i += 1
     except IndexError:
-        print("Chyba cteni parametru.")
+        print("Parameter reading error. Use -h for help.")
         Usage()
         return
 ## Getparam end ## -------------------------
 
-    for s in argn:
-        with open(s, 'r') as infile:
-            f_incert = False;
-            for line in infile:
-                if f_incert:
-                    cert += line
-                    if '--END CERTIFICATE--' in line:
-                        crt1 = subprocess.run(['openssl', 'x509', '-nameopt', 'oneline', '-serial', '-subject', '-issuer', '-hash',  '-dates'], \
-                               input=bytes(cert, 'ascii'), stdout=subprocess.PIPE)
-                        crt1lns = crt1.stdout.decode('ascii').splitlines()
-                        crt2 = subprocess.run(['openssl', 'x509', '-text', '-noout', '-certopt', \
-                               'no_header,no_version,no_serial,no_signame,no_validity,no_issuer,no_pubkey,no_sigdump,no_aux,no_subject'], \
-                               input=bytes(cert, 'ascii'), stdout=subprocess.PIPE)
-                        crt2lns = iter(crt2.stdout.decode('ascii').splitlines())
+    if len(argn) > 0:
+        for s in argn:
+            with open(s, 'r') as infile:
+                crtparse(infile)
+    else:
+        crtparse(sys.stdin)
 
-                        print(clr.green + '----------------------------------------------------' + clr.none)
-                        if inf['subject'][0]:
-                            lprint('Subject:', crt1lns[1].split('=', 1)[1].strip())
-                        if inf['serial'][0]:
-                            lprint('Serial:', crt1lns[0].split('=', 1)[1])
-                        if inf['ca'][0]:
-                            lprint('Issuer:', crt1lns[2].split('=', 1)[1].strip())
-                        if inf['hash'][0]:
-                            lprint('Hash:', crt1lns[3])
-                        if inf['dates'][0]:
-                            lprint('From:',crt1lns[4].split('=', 1)[1])
-                            lprint('To:  ', crt1lns[5].split('=', 1)[1])
-                        if inf['subcn'][0]:
-                            r = re.search(inf['subcn'][1], crt1lns[1].split('=', 1)[1]) 
-                            if r:
-                                lprint('SubCN:', r.group(1))
-                        if inf['cacn'][0]:
-                            r = re.search(inf['cacn'][1], crt1lns[2].split('=', 1)[1]) 
-                            if r:
-                                lprint('Issuer CN:', r.group(1))
-
-                        crtusg = [];
-                        crtextusg = [];
-                        for ln in crt2lns:
-                            if inf['names'][0] and inf['names'][1] in ln:
-                                names = next(crt2lns).strip().split(', ')
-                                print(clr.yellow + 'Names: |' + clr.none)
-                                print('  ' + '\n  '.join(names))
-                            if inf['subid'][0] and inf['subid'][1] in ln:
-                                lprint('Subject ID:', next(crt2lns).lstrip())
-                            if inf['caid'][0] and inf['caid'][1] in ln:
-                                a = next(crt2lns).lstrip()
-                                if a.startswith('keyid:'): a = a[6:]
-                                lprint('Issuer ID:', a)
-                            if inf['usage'][0] and inf['usage'][1] in ln:
-                                crtusg = next(crt2lns).strip().split(", ")
-                            if inf['usage'][0] and inf['usage'][2] in ln:
-                                crtextusg = next(crt2lns).strip().split(", ")
-                        if inf['usage'][0]:
-                            print(clr.yellow + 'Usage: |' + clr.none)
-                            print('  ' + '\n  '.join(crtusg + crtextusg))
-                        f_incert = False
-                else:
-                    if '--BEGIN CERTIFICATE--' in line:
-                        cert = line
-                        f_incert = True
-    print(clr.green + '----------------------------------------------------' + clr.none)
-    return
 ## Main end =================================
 ########### =================================
 

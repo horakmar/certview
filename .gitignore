@@ -1,3 +1,5 @@
 *.crt
 .ipynb*
 *.ipynb
+*.swp
+*.swo
