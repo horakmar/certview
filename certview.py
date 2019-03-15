@@ -55,11 +55,11 @@ def Usage():
 
     usage = """
 Usage:
-    {script_name} [Options] [certificate_file... ]
+    {script_name} [options] [certificate_file... ]
 
 Well arranged view of certificate data
 
-Options:
+options:
   -h ... help - this help
   +c ... do not use colors
 
