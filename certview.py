@@ -20,8 +20,8 @@ inf = {
     'ca': [False],
     'hash': [False],
     'dates': [False],
-    'subcn': [False, r'CN = (.*)'],
-    'cacn': [False, r'CN = (.*)'],
+    'subcn': [False, r'CN = (.*?)(,|$)'],
+    'cacn': [False, r'CN = (.*?)(,|$)'],
     'names': [False, r'Subject Alternative Name:'],
     'subid': [False, r'Subject Key Identifier:'],
     'caid': [False, r'Authority Key Identifier:'],
@@ -133,26 +133,26 @@ def main():
                 if f_incert:
                     cert += line
                     if '--END CERTIFICATE--' in line:
-                        crt1 = subprocess.run(['openssl', 'x509', '-serial', '-subject', '-issuer', '-hash',  '-dates'], \
+                        crt1 = subprocess.run(['openssl', 'x509', '-nameopt', 'oneline', '-serial', '-subject', '-issuer', '-hash',  '-dates'], \
                                input=bytes(cert, 'ascii'), stdout=subprocess.PIPE)
-                        crt1xt = crt1.stdout.decode('ascii')
-                        crt2 = subprocess.run(['openssl', 'x509', '-text', '-nocert', '-certopt', \
+                        crt1lns = crt1.stdout.decode('ascii').splitlines()
+                        crt2 = subprocess.run(['openssl', 'x509', '-text', '-noout', '-certopt', \
                                'no_header,no_version,no_serial,no_signame,no_validity,no_issuer,no_pubkey,no_sigdump,no_aux,no_subject'], \
                                input=bytes(cert, 'ascii'), stdout=subprocess.PIPE)
-                        crt2xt = crt2.stdout.decode('ascii')
-                        crt1lns = crt1xt.splitlines()
-                        crt2lns = iter(crt2xt.splitlines())
+                        crt2lns = iter(crt2.stdout.decode('ascii').splitlines())
+
+                        print(clr.green + '----------------------------------------------------' + clr.none)
                         if inf['subject'][0]:
-                            lprint('Subject:', crt1lns[1].split('=', 1)[1])
+                            lprint('Subject:', crt1lns[1].split('=', 1)[1].strip())
                         if inf['serial'][0]:
                             lprint('Serial:', crt1lns[0].split('=', 1)[1])
                         if inf['ca'][0]:
-                            lprint('Issuer:', crt1lns[2].split('=', 1)[1])
+                            lprint('Issuer:', crt1lns[2].split('=', 1)[1].strip())
                         if inf['hash'][0]:
                             lprint('Hash:', crt1lns[3])
                         if inf['dates'][0]:
-                            lprint('From:',crt1lns[5].split('=', 1)[1])
-                            lprint('To:  ', crt1lns[4].split('=', 1)[1])
+                            lprint('From:',crt1lns[4].split('=', 1)[1])
+                            lprint('To:  ', crt1lns[5].split('=', 1)[1])
                         if inf['subcn'][0]:
                             r = re.search(inf['subcn'][1], crt1lns[1].split('=', 1)[1]) 
                             if r:
@@ -182,13 +182,12 @@ def main():
                         if inf['usage'][0]:
                             print(clr.yellow + 'Usage: |' + clr.none)
                             print('  ' + '\n  '.join(crtusg + crtextusg))
-                        print(clr.green + '----------------------------------------------------' + clr.none)
                         f_incert = False
                 else:
                     if '--BEGIN CERTIFICATE--' in line:
                         cert = line
                         f_incert = True
-
+    print(clr.green + '----------------------------------------------------' + clr.none)
     return
 ## Main end =================================
 ########### =================================
