@@ -6,13 +6,15 @@
 #
 #  Author: Martin Horak
 #  Version: 0.1
-#  Date: 13. 3. 2019
+#  Date: 15. 3. 2019
 #
 ############################################
 import sys, subprocess, re
 
 ## Variables   ## ==========================
 ################# ==========================
+
+clr = None
 
 inf = {
     'serial': [False],
@@ -28,7 +30,7 @@ inf = {
     'usage': [False, r'X509v3 Key Usage:', r'X509v3 Extended Key Usage:']
 }
 
-class clr:
+class colors:
     none   = '[0m'
     red    = '[01;31m'
     green  = '[01;32m'
@@ -36,6 +38,14 @@ class clr:
     blue   = '[01;34m'
     white  = '[01;37m'
 
+    def __init__(self, use_colors):
+        if not use_colors:
+            self.none = ''
+            self.red  = ''
+            self.green = ''
+            self.yellow = ''
+            self.blue = ''
+            self.white = ''
 
 ## Functions ## ============================
 ############### ============================
@@ -50,7 +60,8 @@ Usage:
 Well arranged view of certificate data
 
 Options:
-  -h  ... help - this help
+  -h ... help - this help
+  +c ... do not use colors
 
   Print info:
     -S ... Subject [printed by default]
@@ -69,7 +80,8 @@ Options:
     +S ... Subject
 
 When no option is specified, default is [-SNAdiInu].
-Wher no certificate_file is specified, stdin is read.
+When no certificate_file is specified, stdin is read.
+When stdout is not a tty, colors are disabled.
 
 """
     print(usage.format(script_name = sys.argv[0]))
@@ -149,10 +161,9 @@ def crtparse(infile):
 ########## =================================
 def main():
     '''Main program'''
+    global clr
 
-## Variables ## ============================
-############### ============================
-
+    use_colors = sys.stdout.isatty()
 ## Getparam ## -----------------------------
     argn = []
     args = sys.argv;
@@ -193,6 +204,8 @@ def main():
                 for j in args[i][1:]:
                     if j == 'S':
                         inf['subject'][0] = False
+                    if j == 'c':
+                        use_colors = False
             else:
                 argn.append(args[i])
             i += 1
@@ -201,6 +214,8 @@ def main():
         Usage()
         return
 ## Getparam end ## -------------------------
+    
+    clr = colors(use_colors)
 
     if len(argn) > 0:
         for s in argn:
