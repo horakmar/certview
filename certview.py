@@ -102,7 +102,7 @@ def crtparse(infile):
     f_incert = False;
     for line in infile:
         if f_incert:
-            cert += line
+            cert += line.lstrip()
             if '--END CERTIFICATE--' in line:
                 crt1 = subprocess.run(['openssl', 'x509', '-nameopt', 'oneline', '-serial', '-subject', '-issuer', '-hash',  '-dates'], \
                        input=bytes(cert, 'ascii'), stdout=subprocess.PIPE)
@@ -145,7 +145,7 @@ def crtparse(infile):
                     if inf['caid'][0] and inf['caid'][1] in ln:
                         a = next(crt2lns).lstrip()
                         if a.startswith('keyid:'): a = a[6:]
-                        lprint('Issuer ID:', a)
+                        lprint('Issuer ID: ', a)
                     if inf['usage'][0] and inf['usage'][1] in ln:
                         crtusg = next(crt2lns).strip().split(", ")
                     if inf['usage'][0] and inf['usage'][2] in ln:
@@ -156,7 +156,7 @@ def crtparse(infile):
                 f_incert = False
         else:
             if '--BEGIN CERTIFICATE--' in line:
-                cert = line
+                cert = line.lstrip()
                 f_incert = True
     print(clr.green + '----------------------------------------------------' + clr.none)
     return
