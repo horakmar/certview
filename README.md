@@ -1,3 +1,5 @@
+## Moved to kubernetes/utils
+
 # Simple Certificate Viewer
 
 (Hopefully) well arranged view of certificate data.
