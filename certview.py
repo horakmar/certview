@@ -16,6 +16,7 @@ import sys, subprocess, re
 
 clr = None
 
+# {item: [print_by_default, line_ident, ...]}
 inf = {
     'serial': [False],
     'subject': [True],
@@ -152,7 +153,9 @@ def crtparse(infile):
                         crtextusg = next(crt2lns).strip().split(", ")
                 if inf['usage'][0]:
                     print(clr.yellow + 'Usage: |' + clr.none)
-                    print('  ' + '\n  '.join(crtusg + crtextusg))
+                    print('  ' + '\n  '.join(crtusg))
+                    print(clr.yellow + 'ExtUsage: |' + clr.none)
+                    print('  ' + '\n  '.join(crtextusg))
                 f_incert = False
         else:
             if '--BEGIN CERTIFICATE--' in line:
